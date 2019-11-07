@@ -300,6 +300,7 @@ class TreeRecordingObserver(DataObserver):
         self.__current_node = tree.root
         self.__index_in_current_node = 0
         self.__trail = [self.__current_node]
+        self.__kill_point = None
 
     def draw_bits(self, n_bits, forced, value):
         i = self.__index_in_current_node
@@ -349,6 +350,12 @@ class TreeRecordingObserver(DataObserver):
         if self.__trail[-1] is not self.__current_node:
             self.__trail.append(self.__current_node)
 
+    def kill_branch(self):
+        """Mark this part of the tree as not worth re-exploring."""
+        if self.__kill_point is None:
+            self.__kill_point = len(self.__trail)
+            self.__current_node.is_exhausted = True
+
     def conclude_test(self, status, interesting_origin):
         """Says that ``status`` occurred at node ``node``. This updates the
         node if necessary and checks for consistency."""
@@ -381,7 +388,12 @@ class TreeRecordingObserver(DataObserver):
         node.check_exhausted()
         assert len(node.values) > 0 or node.check_exhausted()
 
-        for t in reversed(self.__trail):
+        if self.__kill_point is None:
+            end = len(self.__trail)
+        else:
+            end = self.__kill_point
+
+        for t in reversed(self.__trail[:end]):
             # Any node we've traversed might have now become exhausted.
             # We check from the right. As soon as we hit a node that
             # isn't exhausted, this automatically implies that all of
